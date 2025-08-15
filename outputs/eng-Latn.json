@@ -6,4 +6,13 @@
       "<your feature list here>"
     ]
   }
-]
+]{"timestamp": "2025-08-15T17:39:41.108785Z", "lang": "eng-Latn", "text": "She sells seashells by the seashore.", "ipa": "ʃi sɛlz siʃɛlz baj ðə siʃɔɹ."}
+{"timestamp": "2025-08-15T17:39:41.162535Z", "lang": "eng-Latn", "text": "Peter Piper picked a peck of pickled peppers.", "ipa": "pitɹ̩ pajpɹ̩ pɪkt ə pɛk ʌv pɪkəld pɛpɹ̩z."}
+{"timestamp": "2025-08-15T17:39:41.203030Z", "lang": "eng-Latn", "text": "How can a clam cram in a clean cream can?", "ipa": "haw kæn ə klæm kɹæm ɪn ə klin kɹim kæn?"}
+{"timestamp": "2025-08-15T17:39:41.219589Z", "lang": "eng-Latn", "text": "A proper copper coffee pot.", "ipa": "ə pɹɑpɹ̩ kɑpɹ̩ kɑfi pɑt."}
+{"timestamp": "2025-08-15T17:39:41.241639Z", "lang": "eng-Latn", "text": "Six sleek swans swam swiftly southwards.", "ipa": "sɪks slik swɑnz swæm swɪftli sawθwɹ̩dz."}
+{"timestamp": "2025-08-15T17:42:53.858680Z", "lang": "eng-Latn", "text": "tail -n 5 outputs/eng-Latn.json", "ipa": "tejl -ɛn 5 awtpʊts/ɛŋ-lætn.d͡ʒsən"}
+{"timestamp": "2025-08-15T17:42:53.872547Z", "lang": "eng-Latn", "text": "wc -l outputs/eng-Latn.json", "ipa": "wk -ɛl awtpʊts/ɛŋ-lætn.d͡ʒsən"}
+{"timestamp": "2025-08-15T17:43:15.141219Z", "lang": "eng-Latn", "text": "git add -f outputs/eng-Latn.json", "ipa": "d͡ʒɪt æd -ɛf awtpʊts/ɛŋ-lætn.d͡ʒsən"}
+{"timestamp": "2025-08-15T17:43:15.154623Z", "lang": "eng-Latn", "text": "git commit -m \"Append English IPA twisters\"", "ipa": "d͡ʒɪt kəmɪt -ɛm \"əpɛnd ɪŋɡlɪʃ ipə twɪstɹ̩z\""}
+{"timestamp": "2025-08-15T17:43:15.162026Z", "lang": "eng-Latn", "text": "git push", "ipa": "d͡ʒɪt pʊʃ"}
