@@ -16,3 +16,9 @@
 {"timestamp": "2025-08-15T17:43:15.141219Z", "lang": "eng-Latn", "text": "git add -f outputs/eng-Latn.json", "ipa": "d͡ʒɪt æd -ɛf awtpʊts/ɛŋ-lætn.d͡ʒsən"}
 {"timestamp": "2025-08-15T17:43:15.154623Z", "lang": "eng-Latn", "text": "git commit -m \"Append English IPA twisters\"", "ipa": "d͡ʒɪt kəmɪt -ɛm \"əpɛnd ɪŋɡlɪʃ ipə twɪstɹ̩z\""}
 {"timestamp": "2025-08-15T17:43:15.162026Z", "lang": "eng-Latn", "text": "git push", "ipa": "d͡ʒɪt pʊʃ"}
+{"timestamp": "2025-08-15T21:11:12.976173Z", "lang": "eng-Latn", "text": "python3 twisters_cli.py --lang spa-Latn", "ipa": "pajθɑn3 twɪstɹ̩z_kli.paj --læŋ spɑ-lætn"}
+{"timestamp": "2025-08-15T21:13:57.244496Z", "lang": "eng-Latn", "text": "A peck of pickled peppers Peter Piper picked.\r\rIf Peter Piper picked a peck of pickled peppers,\r\rWhere's the peck of pickled peppers Peter Piper picked?\r\u001b[201~Peter Piper picked a peck of pickled peppers.", "ipa": "ə pɛk ʌv pɪkəld pɛpɹ̩z pitɹ̩ pajpɹ̩ pɪkt.\r\rɪf pitɹ̩ pajpɹ̩ pɪkt ə pɛk ʌv pɪkəld pɛpɹ̩z,\r\rwɛɹəz ðə pɛk ʌv pɪkəld pɛpɹ̩z pitɹ̩ pajpɹ̩ pɪkt?\r\u001b[201~pitɹ̩ pajpɹ̩ pɪkt ə pɛk ʌv pɪkəld pɛpɹ̩z."}
+{"timestamp": "2025-08-15T21:17:50.726552Z", "lang": "eng-Latn", "text": "> Peter Piper picked a peck of pickled peppers.", "ipa": "> pitɹ̩ pajpɹ̩ pɪkt ə pɛk ʌv pɪkəld pɛpɹ̩z."}
+{"timestamp": "2025-08-15T21:17:50.747332Z", "lang": "eng-Latn", "text": "> A peck of pickled peppers Peter Piper picked.", "ipa": "> ə pɛk ʌv pɪkəld pɛpɹ̩z pitɹ̩ pajpɹ̩ pɪkt."}
+{"timestamp": "2025-08-15T21:17:50.768963Z", "lang": "eng-Latn", "text": "> If Peter Piper picked a peck of pickled peppers,", "ipa": "> ɪf pitɹ̩ pajpɹ̩ pɪkt ə pɛk ʌv pɪkəld pɛpɹ̩z,"}
+{"timestamp": "2025-08-15T21:17:50.791207Z", "lang": "eng-Latn", "text": "> Where's the peck of pickled peppers Peter Piper picked?", "ipa": "> wɛɹəz ðə pɛk ʌv pɪkəld pɛpɹ̩z pitɹ̩ pajpɹ̩ pɪkt?"}

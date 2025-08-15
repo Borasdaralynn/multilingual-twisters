@@ -1,5 +1,7 @@
 venv/
 __pycache__/
 *.log
-outputs/
+outputs/*
+!outputs/eng-Latin.json
+
 
