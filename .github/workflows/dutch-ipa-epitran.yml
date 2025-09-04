@@ -1,10 +1,10 @@
-name: Dutch IPA (Epitran only)
+name: Dutch IPA (Epitran only, hardened)
 
 on:
   workflow_dispatch: {}
 
 permissions:
-  contents: write   # commit outputs/dutch.csv
+  contents: write   # needed to commit outputs/dutch.csv
 
 jobs:
   build:
@@ -16,10 +16,18 @@ jobs:
       - name: Verify input exists and preview
         run: |
           set -euo pipefail
-          test -f data/dutch.txt || (echo "ERROR: data/dutch.txt not found" >&2; exit 1)
-          test -s data/dutch.txt || (echo "ERROR: data/dutch.txt is empty" >&2; exit 1)
-          echo "✅ Found data/dutch.txt"
-          head -n 10 data/dutch.txt || true
+          if [ ! -f data/dutch.txt ]; then
+            echo "ERROR: data/dutch.txt not found (wrong path or filename case?)." >&2
+            exit 1
+          fi
+          if [ ! -s data/dutch.txt ]; then
+            echo "ERROR: data/dutch.txt exists but is EMPTY." >&2
+            exit 1
+          fi
+          echo "✅ Found data/dutch.txt (size: $(wc -c < data/dutch.txt) bytes)"
+          echo "----- First 12 lines -----"
+          head -n 12 data/dutch.txt || true
+          echo "--------------------------"
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -28,10 +36,20 @@ jobs:
 
       - name: Install Python deps
         run: |
+          set -euo pipefail
           python -m pip install --upgrade pip
           pip install epitran pandas
 
-      - name: Transcribe Dutch to IPA with Epitran
+      - name: Smoke-test Epitran (nld-Latn)
+        run: |
+          set -euo pipefail
+          python - << 'PY'
+          import epitran
+          epi = epitran.Epitran("nld-Latn")
+          print("SMOKE:", epi.transliterate("Zeven zotte zuigers zoogen zonder zucht."))
+          PY
+
+      - name: Transcribe Dutch to IPA (Epitran nld-Latn)
         run: |
           set -euo pipefail
           python - << 'PY'
@@ -45,7 +63,7 @@ jobs:
           raw = open(INP, encoding="utf-8").read()
           raw = re.sub(r"[ \t]+$", "", raw, flags=re.M)
 
-          # Split into twisters
+          # Parse: prefer blank-line blocks; fallback to one-line-per-twister
           blocks = []
           for blk in re.split(r"(?:\r?\n){2,}", raw):
               lines = [ln.strip() for ln in blk.splitlines() if ln.strip()]
@@ -54,8 +72,10 @@ jobs:
           if len(blocks) <= 1:
               blocks = [ln.strip() for ln in raw.splitlines() if ln.strip()]
 
-          if not blocks:
-              print("ERROR: No twisters found in data/dutch.txt", file=sys.stderr)
+          n = len(blocks)
+          print(f"INFO: Parsed {n} twister blocks.")
+          if n == 0:
+              print("ERROR: No twisters parsed. Use either blank lines between twisters, or one twister per line.", file=sys.stderr)
               sys.exit(1)
 
           epi = epitran.Epitran("nld-Latn")
@@ -69,17 +89,27 @@ jobs:
 
           with open(OUT, "w", encoding="utf-8", newline="") as g:
               w = csv.writer(g)
-              w.writerow(["text","ipa"])
+              w.writerow(["text", "ipa"])
               w.writerows(rows)
 
-          print(f"✅ Wrote {OUT} with {len(rows)} rows using epitran:nld-Latn")
+          # Hard verify file exists and has at least header+1 row
+          import os
+          if not os.path.exists(OUT):
+              print("ERROR: outputs/dutch.csv was not created.", file=sys.stderr)
+              sys.exit(1)
+          if sum(1 for _ in open(OUT, encoding="utf-8")) < 2:
+              print("ERROR: outputs/dutch.csv is empty (no rows).", file=sys.stderr)
+              sys.exit(1)
+
+          print(f"✅ Wrote {OUT} with {len(rows)} rows.")
           PY
 
-      - name: Show outputs
+      - name: Show outputs (must include dutch.csv)
         run: |
           set -euo pipefail
           ls -lah outputs
-          test -f outputs/dutch.csv || (echo "ERROR: outputs/dutch.csv not found" >&2; exit 1)
+          test -f outputs/dutch.csv || (echo "ERROR: outputs/dutch.csv not found after run" >&2; exit 1)
+          echo "----- CSV head -----"
           head -n 5 outputs/dutch.csv || true
 
       - name: Upload CSV as artifact
@@ -92,4 +122,4 @@ jobs:
         uses: EndBug/add-and-commit@v9
         with:
           add: "outputs/dutch.csv"
-          message: "Add Dutch IPA CSV (Epitran)"
+          message: "Add Dutch IPA CSV (Epitran nld-Latn)"
