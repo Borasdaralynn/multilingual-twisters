@@ -49,12 +49,12 @@ jobs:
           print("Panphon OK")
           PY
 
-      - name: Smoke-test Epitran (must load deu-Latn and produce IPA)
+      - name: Smoke-test Epitran (must load fra-Latn and produce IPA)
         run: |
           set -euo pipefail
           python - << 'PY'
           import epitran
-          epi = epitran.Epitran("deu-Latn")
+          epi = epitran.Epitran("fra-Latn")
           sample = "Zeven zotte zuigers zoogen zonder zucht."
           ipa = epi.transliterate(sample)
           print("SMOKE:", ipa)
@@ -62,7 +62,7 @@ jobs:
               raise SystemExit("ERROR: Smoke test produced empty or unchanged output.")
           PY
 
-      - name: Transcribe French to IPA (Epitran deu-Latn)
+      - name: Transcribe French to IPA (Epitran fra-Latn)
         run: |
           set -euo pipefail
           python - << 'PY'
@@ -92,7 +92,7 @@ jobs:
               print("ERROR: No twisters parsed. Use either blank lines between twisters, or one twister per line.", file=sys.stderr)
               sys.exit(1)
 
-          epi = epitran.Epitran("deu-Latn")
+          epi = epitran.Epitran("fra-Latn")
 
           # Write CSV with header first; append rows (more robust on interrupts)
           with open(OUT, "w", encoding="utf-8", newline="") as g:
@@ -133,4 +133,4 @@ jobs:
         uses: EndBug/add-and-commit@v9
         with:
           add: "outputs/french.csv"
-          message: "Add French IPA CSV (Epitran Deu-Latn)"
+          message: "Add French IPA CSV (Epitran fra-Latn)"
