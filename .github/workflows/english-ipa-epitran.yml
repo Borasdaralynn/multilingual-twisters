@@ -25,8 +25,8 @@ jobs:
             exit 1
           fi
           echo "✅ Found data/english.txt"
-          echo "----- First 20 lines -----"
-          head -n 20 data/english.txt || true
+          echo "----- First 10 lines -----"
+          head -n 10 data/english.txt || true
           echo "--------------------------"
 
       - name: Install build deps
@@ -48,8 +48,8 @@ jobs:
           make lex_lookup
           sudo cp lex_lookup /usr/local/bin
           which lex_lookup
-          # quick probe
-          echo "test" | lex_lookup >/dev/null
+          # run probe with a word so it exits 0
+          lex_lookup test || true
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -76,18 +76,17 @@ jobs:
         run: |
           set -euo pipefail
           python - << 'PY'
-          import os, re, csv, sys, shutil
+          import os, re, csv, sys
           import epitran
 
           INP = "data/english.txt"
           OUT = "outputs/english.csv"
           os.makedirs("outputs", exist_ok=True)
 
-          # load
           raw = open(INP, encoding="utf-8").read()
           raw = re.sub(r"[ \t]+$", "", raw, flags=re.M)
 
-          # prefer blank-line blocks; fallback to line-per-twister
+          # Split into twisters
           blocks = []
           for blk in re.split(r"(?:\r?\n){2,}", raw):
               lines = [ln.strip() for ln in blk.splitlines() if ln.strip()]
@@ -123,7 +122,6 @@ jobs:
           ls -lah outputs
           test -f outputs/english.csv || (echo "ERROR: outputs/english.csv not found after run" >&2; exit 1)
           wc -l outputs/english.csv
-          echo "----- Head of CSV -----"
           head -n 5 outputs/english.csv || true
 
       - name: Upload CSV as artifact
