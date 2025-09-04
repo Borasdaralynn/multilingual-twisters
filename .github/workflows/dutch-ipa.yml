@@ -1,0 +1,118 @@
+name: Dutch IPA (Epitran first, fallback to phonemizer)
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write   # commit outputs/dutch.csv
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Verify input exists and preview
+        run: |
+          set -euo pipefail
+          test -f data/dutch.txt || (echo "ERROR: data/dutch.txt not found" >&2; exit 1)
+          test -s data/dutch.txt || (echo "ERROR: data/dutch.txt is empty" >&2; exit 1)
+          echo "✅ Found data/dutch.txt"
+          head -n 10 data/dutch.txt || true
+
+      - name: Install system deps for fallback (eSpeak-NG)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y espeak-ng
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python deps (Epitran + fallback)
+        run: |
+          python -m pip install --upgrade pip
+          pip install epitran phonemizer pandas
+
+      - name: Transcribe Dutch to IPA (Epitran nld-Latn → fallback to phonemizer nl)
+        run: |
+          set -euo pipefail
+          python - << 'PY'
+          import os, re, csv, sys
+          os.makedirs("outputs", exist_ok=True)
+
+          INP = "data/dutch.txt"
+          OUT = "outputs/dutch.csv"
+
+          raw = open(INP, encoding="utf-8").read()
+          raw = re.sub(r"[ \t]+$", "", raw, flags=re.M)
+
+          # Prefer blank-line-separated blocks; fall back to one-line-per-twister
+          blocks = []
+          for blk in re.split(r"(?:\r?\n){2,}", raw):
+              lines = [ln.strip() for ln in blk.splitlines() if ln.strip()]
+              if lines:
+                  blocks.append(" ".join(lines))
+          if len(blocks) <= 1:
+              blocks = [ln.strip() for ln in raw.splitlines() if ln.strip()]
+
+          if not blocks:
+              print("ERROR: No twisters found in data/dutch.txt", file=sys.stderr)
+              sys.exit(1)
+
+          rows = []
+
+          # --- Try Epitran (nld-Latn) first
+          try:
+              import epitran
+              epi = epitran.Epitran("nld-Latn")
+              for i, text in enumerate(blocks, 1):
+                  ipa = epi.transliterate(text)
+                  rows.append((text, ipa))
+              engine = "epitran:nld-Latn"
+          except Exception as e:
+              # --- Fallback: phonemizer + eSpeak-NG (nl)
+              from phonemizer import phonemize
+              rows = []
+              for i, text in enumerate(blocks, 1):
+                  ipa = phonemize(
+                      text,
+                      language="nl",
+                      backend="espeak",
+                      strip=True,
+                      njobs=1,
+                      punctuation_marks=';:,.!?¡¿—…"«»“”()[]{}',
+                      preserve_punctuation=True,
+                      with_stress=True
+                  )
+                  rows.append((text, ipa))
+              engine = f"phonemizer:nl (fallback due to {type(e).__name__})"
+
+          with open(OUT, "w", encoding="utf-8", newline="") as g:
+              w = csv.writer(g)
+              w.writerow(["text", "ipa"])
+              w.writerows(rows)
+
+          print(f"✅ Wrote {OUT} with {len(rows)} rows using {engine}.")
+          PY
+
+      - name: Show outputs (must include dutch.csv)
+        run: |
+          set -euo pipefail
+          ls -lah outputs
+          test -f outputs/dutch.csv || (echo "ERROR: outputs/dutch.csv not found after run" >&2; exit 1)
+          head -n 5 outputs/dutch.csv || true
+
+      - name: Upload CSV as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dutch-ipa
+          path: outputs/dutch.csv
+
+      - name: Commit outputs into repo
+        uses: EndBug/add-and-commit@v9
+        with:
+          add: "outputs/dutch.csv"
+          message: "Add Dutch IPA CSV (Epitran-first with phonemizer fallback)"
