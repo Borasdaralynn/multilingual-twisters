@@ -1,7 +1,7 @@
 name: Welsh IPA (Epitran)
 
 on:
-  workflow_dispatch: {}   # lets you run it manually
+  workflow_dispatch: {}   # run manually from Actions tab
 
 permissions:
   contents: write
@@ -21,20 +21,33 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install epitran pandas click
+          pip install epitran pandas
 
       - name: Run Welsh transcription
         run: |
-          mkdir -p outputs
-          python twisters_cli.py --lang cym-Latn --input data/welsh.txt --output outputs/welsh.csv
+          python - << 'PY'
+          import epitran, csv, os
+          epi = epitran.Epitran('cym-Latn')
+          os.makedirs("outputs", exist_ok=True)
+          with open("data/welsh.txt", encoding="utf-8") as f, \
+               open("outputs/welsh.csv", "w", encoding="utf-8", newline="") as g:
+              writer = csv.writer(g)
+              writer.writerow(["text", "ipa"])
+              for line in f:
+                  line = line.strip()
+                  if not line: 
+                      continue
+                  ipa = epi.transliterate(line)
+                  writer.writerow([line, ipa])
+          PY
 
-      - name: Upload output as artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: welsh-ipa
           path: outputs/welsh.csv
 
-      - name: Commit outputs to repo
+      - name: Commit outputs back to repo
         uses: EndBug/add-and-commit@v9
         with:
           add: "outputs/welsh.csv"
