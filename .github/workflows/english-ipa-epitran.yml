@@ -1,4 +1,4 @@
-name: English IPA (Epitran + Flite)
+name: English IPA (Epitran)
 
 on:
   workflow_dispatch: {}
