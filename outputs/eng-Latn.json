@@ -1,24 +1,26 @@
 [
   {
-    "text": "She sells sea shells by the sea shore",
-    "ipa": "ʃiː sɛlz siː ʃɛlz baɪ ðə siː ʃoːɹ",
-    "features": [
-      "<your feature list here>"
-    ]
+    "text": "She sells seashells by the seashore.",
+    "ipa": "ʃi sɛlz siʃɛlz baɪ ðə siʃɔr"
+  },
+  {
+    "text": "Peter Piper picked a peck of pickled peppers.",
+    "ipa": "ˈpiːtər ˈpaɪpər pɪkt ə pɛk əv ˈpɪkəld ˈpɛpərz"
+  },
+  {
+    "text": "How can a clam cram in a clean cream can?",
+    "ipa": "haʊ kæn ə klæm kræm ɪn ə klin krim kæn"
+  },
+  {
+    "text": "A proper copper coffee pot.",
+    "ipa": "ə ˈpɹɑpɹ kɑpɹ kɑfi pɑt"
+  },
+  {
+    "text": "Six sleek swans swam swiftly southwards.",
+    "ipa": "sɪks sliːk swɑnz swæm ˈswɪftli ˈsaʊθwərdz"
+  },
+  {
+    "twister": "How much wood would a woodchuck chuck if a woodchuck could chuck wood?",
+    "ipa": "haw mʌt͡ʃ wʊd wʊd ə wʊdt͡ʃʌk t͡ʃʌk ɪf ə wʊdt͡ʃʌk kʊd t͡ʃʌk wʊd?"
   }
-]{"timestamp": "2025-08-15T17:39:41.108785Z", "lang": "eng-Latn", "text": "She sells seashells by the seashore.", "ipa": "ʃi sɛlz siʃɛlz baj ðə siʃɔɹ."}
-{"timestamp": "2025-08-15T17:39:41.162535Z", "lang": "eng-Latn", "text": "Peter Piper picked a peck of pickled peppers.", "ipa": "pitɹ̩ pajpɹ̩ pɪkt ə pɛk ʌv pɪkəld pɛpɹ̩z."}
-{"timestamp": "2025-08-15T17:39:41.203030Z", "lang": "eng-Latn", "text": "How can a clam cram in a clean cream can?", "ipa": "haw kæn ə klæm kɹæm ɪn ə klin kɹim kæn?"}
-{"timestamp": "2025-08-15T17:39:41.219589Z", "lang": "eng-Latn", "text": "A proper copper coffee pot.", "ipa": "ə pɹɑpɹ̩ kɑpɹ̩ kɑfi pɑt."}
-{"timestamp": "2025-08-15T17:39:41.241639Z", "lang": "eng-Latn", "text": "Six sleek swans swam swiftly southwards.", "ipa": "sɪks slik swɑnz swæm swɪftli sawθwɹ̩dz."}
-{"timestamp": "2025-08-15T17:42:53.858680Z", "lang": "eng-Latn", "text": "tail -n 5 outputs/eng-Latn.json", "ipa": "tejl -ɛn 5 awtpʊts/ɛŋ-lætn.d͡ʒsən"}
-{"timestamp": "2025-08-15T17:42:53.872547Z", "lang": "eng-Latn", "text": "wc -l outputs/eng-Latn.json", "ipa": "wk -ɛl awtpʊts/ɛŋ-lætn.d͡ʒsən"}
-{"timestamp": "2025-08-15T17:43:15.141219Z", "lang": "eng-Latn", "text": "git add -f outputs/eng-Latn.json", "ipa": "d͡ʒɪt æd -ɛf awtpʊts/ɛŋ-lætn.d͡ʒsən"}
-{"timestamp": "2025-08-15T17:43:15.154623Z", "lang": "eng-Latn", "text": "git commit -m \"Append English IPA twisters\"", "ipa": "d͡ʒɪt kəmɪt -ɛm \"əpɛnd ɪŋɡlɪʃ ipə twɪstɹ̩z\""}
-{"timestamp": "2025-08-15T17:43:15.162026Z", "lang": "eng-Latn", "text": "git push", "ipa": "d͡ʒɪt pʊʃ"}
-{"timestamp": "2025-08-15T21:11:12.976173Z", "lang": "eng-Latn", "text": "python3 twisters_cli.py --lang spa-Latn", "ipa": "pajθɑn3 twɪstɹ̩z_kli.paj --læŋ spɑ-lætn"}
-{"timestamp": "2025-08-15T21:13:57.244496Z", "lang": "eng-Latn", "text": "A peck of pickled peppers Peter Piper picked.\r\rIf Peter Piper picked a peck of pickled peppers,\r\rWhere's the peck of pickled peppers Peter Piper picked?\r\u001b[201~Peter Piper picked a peck of pickled peppers.", "ipa": "ə pɛk ʌv pɪkəld pɛpɹ̩z pitɹ̩ pajpɹ̩ pɪkt.\r\rɪf pitɹ̩ pajpɹ̩ pɪkt ə pɛk ʌv pɪkəld pɛpɹ̩z,\r\rwɛɹəz ðə pɛk ʌv pɪkəld pɛpɹ̩z pitɹ̩ pajpɹ̩ pɪkt?\r\u001b[201~pitɹ̩ pajpɹ̩ pɪkt ə pɛk ʌv pɪkəld pɛpɹ̩z."}
-{"timestamp": "2025-08-15T21:17:50.726552Z", "lang": "eng-Latn", "text": "> Peter Piper picked a peck of pickled peppers.", "ipa": "> pitɹ̩ pajpɹ̩ pɪkt ə pɛk ʌv pɪkəld pɛpɹ̩z."}
-{"timestamp": "2025-08-15T21:17:50.747332Z", "lang": "eng-Latn", "text": "> A peck of pickled peppers Peter Piper picked.", "ipa": "> ə pɛk ʌv pɪkəld pɛpɹ̩z pitɹ̩ pajpɹ̩ pɪkt."}
-{"timestamp": "2025-08-15T21:17:50.768963Z", "lang": "eng-Latn", "text": "> If Peter Piper picked a peck of pickled peppers,", "ipa": "> ɪf pitɹ̩ pajpɹ̩ pɪkt ə pɛk ʌv pɪkəld pɛpɹ̩z,"}
-{"timestamp": "2025-08-15T21:17:50.791207Z", "lang": "eng-Latn", "text": "> Where's the peck of pickled peppers Peter Piper picked?", "ipa": "> wɛɹəz ðə pɛk ʌv pɪkəld pɛpɹ̩z pitɹ̩ pajpɹ̩ pɪkt?"}
+]
