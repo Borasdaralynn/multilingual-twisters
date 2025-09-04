@@ -1,10 +1,10 @@
 name: Welsh IPA (Epitran)
 
 on:
-  workflow_dispatch: {}   # run manually from Actions tab
+  workflow_dispatch: {}   # Run manually from Actions tab
 
 permissions:
-  contents: write
+  contents: write         # Allow committing outputs back to repo
 
 jobs:
   build:
@@ -23,32 +23,104 @@ jobs:
           python -m pip install --upgrade pip
           pip install epitran pandas
 
-      - name: Run Welsh transcription
+      - name: Transcribe Welsh to IPA (with gentle Welsh post-processing)
         run: |
           python - << 'PY'
-          import epitran, csv, os
-          epi = epitran.Epitran('cym-Latn')
-          os.makedirs("outputs", exist_ok=True)
-          with open("data/welsh.txt", encoding="utf-8") as f, \
-               open("outputs/welsh.csv", "w", encoding="utf-8", newline="") as g:
-              writer = csv.writer(g)
-              writer.writerow(["text", "ipa"])
+          import os, csv, re
+          import epitran
+
+          # --- Settings ---
+          ISO = 'cym-Latn'
+          INP = 'data/welsh.txt'
+          OUT = 'outputs/welsh.csv'
+
+          # --- Prepare ---
+          os.makedirs('outputs', exist_ok=True)
+          epi = epitran.Epitran(ISO)
+
+          def polish_word(orig_word: str, ipa_word: str) -> str:
+              """
+              Light, safe post-processing guided by **orthography**:
+              - If orig begins with 'rh', ensure first 'r' in IPA is devoiced r̥
+              - If orig contains 'll', ensure presence of ɬ near first lateral
+              - If orig contains 'ch', prefer x if not already a velar fricative
+              - If orig contains 'dd', prefer ð
+              These are conservative and only tweak the first matching segment.
+              """
+              w = orig_word.lower()
+
+              # RH (word-initial): devoiced trill/fricative r̥
+              if w.startswith('rh'):
+                  # replace the first 'r' (if present) with r̥
+                  wipa = list(ipa_word)
+                  for i, ch in enumerate(wipa):
+                      if ch == 'r':
+                          wipa[i] = 'r̥'
+                          ipa_word = ''.join(wipa)
+                          break
+
+              # LL (voiceless lateral fricative ɬ)
+              if 'll' in w:
+                  if 'ɬ' not in ipa_word:
+                      # replace the first 'l' with ɬ
+                      ipa_word = ipa_word.replace('l', 'ɬ', 1)
+
+              # CH (voiceless velar fricative). Prefer 'x' if not present.
+              if 'ch' in w:
+                  if 'x' not in ipa_word and 'χ' not in ipa_word:
+                      # common stand-ins that might appear: k, h near back vowels
+                      # Be conservative: first k or h -> x
+                      if 'k' in ipa_word:
+                          ipa_word = ipa_word.replace('k', 'x', 1)
+                      elif 'h' in ipa_word:
+                          ipa_word = ipa_word.replace('h', 'x', 1)
+
+              # DD (voiced dental fricative ð)
+              if 'dd' in w and 'ð' not in ipa_word:
+                  # Replace the first 'd' with ð (if present)
+                  ipa_word = ipa_word.replace('d', 'ð', 1)
+
+              return ipa_word
+
+          def polish_line(orig_line: str, ipa_line: str) -> str:
+              # Tokenize words in parallel to apply word-level tweaks.
+              # (Keep punctuation attached in IPA; split on spaces.)
+              orig_tokens = orig_line.split()
+              ipa_tokens  = ipa_line.split()
+              # If counts mismatch, fall back to raw ipa_line
+              if len(orig_tokens) != len(ipa_tokens):
+                  return ipa_line
+              fixed = []
+              for o, i in zip(orig_tokens, ipa_tokens):
+                  fixed.append(polish_word(o, i))
+              return ' '.join(fixed)
+
+          rows = []
+          with open(INP, encoding='utf-8') as f:
               for line in f:
-                  line = line.strip()
-                  if not line: 
+                  text = line.strip()
+                  if not text:
                       continue
-                  ipa = epi.transliterate(line)
-                  writer.writerow([line, ipa])
+                  ipa = epi.transliterate(text)
+                  ipa_fixed = polish_line(text, ipa)
+                  rows.append((text, ipa_fixed))
+
+          with open(OUT, 'w', encoding='utf-8', newline='') as g:
+              w = csv.writer(g)
+              w.writerow(['text', 'ipa'])
+              w.writerows(rows)
+
+          print(f"Wrote {OUT} with {len(rows)} rows.")
           PY
 
-      - name: Upload artifact
+      - name: Upload CSV as artifact
         uses: actions/upload-artifact@v4
         with:
           name: welsh-ipa
           path: outputs/welsh.csv
 
-      - name: Commit outputs back to repo
+      - name: Commit outputs into repo
         uses: EndBug/add-and-commit@v9
         with:
           add: "outputs/welsh.csv"
-          message: "Add Welsh IPA CSV"
+          message: "Add Welsh IPA CSV (cym-Latn) with gentle post-processing"
