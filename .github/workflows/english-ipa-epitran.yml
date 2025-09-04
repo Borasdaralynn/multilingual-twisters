@@ -1,10 +1,10 @@
-name: English IPA (Epitran + Flite lex_lookup)
+name: English IPA (Epitran + Flite)
 
 on:
   workflow_dispatch: {}
 
 permissions:
-  contents: write
+  contents: write   # we will commit outputs/english.csv
 
 jobs:
   build:
@@ -13,33 +13,43 @@ jobs:
       - name: Check out repo
         uses: actions/checkout@v4
 
-      - name: Verify input exists (data/english.txt)
+      - name: Verify input exists and preview
         run: |
-          test -f data/english.txt || (echo "ERROR: data/english.txt not found" >&2; exit 1)
+          set -euo pipefail
+          if [ ! -f data/english.txt ]; then
+            echo "ERROR: data/english.txt not found." >&2
+            exit 1
+          fi
+          if [ ! -s data/english.txt ]; then
+            echo "ERROR: data/english.txt is empty." >&2
+            exit 1
+          fi
           echo "✅ Found data/english.txt"
-          head -n 10 data/english.txt || true
+          echo "----- First 20 lines -----"
+          head -n 20 data/english.txt || true
+          echo "--------------------------"
 
       - name: Install build deps
         run: |
+          set -euo pipefail
           sudo apt-get update
           sudo apt-get install -y build-essential wget tar
 
       - name: Build & install Flite lex_lookup (required by Epitran for English)
         run: |
-          set -e
-          # Get Flite source (2.2 is current stable in upstream repo)
+          set -euo pipefail
           wget -q https://github.com/festvox/flite/archive/refs/tags/v2.2.tar.gz -O flite.tar.gz
           tar xf flite.tar.gz
           cd flite-2.2
           ./configure
-          make -j$(nproc)
+          make -j"$(nproc)"
           sudo make install
-          # Build the lex_lookup tool and put it on PATH
           cd testsuite
           make lex_lookup
           sudo cp lex_lookup /usr/local/bin
           which lex_lookup
-          lex_lookup <<<'test' >/dev/null || (echo "lex_lookup runs" && true)
+          # quick probe
+          echo "test" | lex_lookup >/dev/null
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -48,27 +58,36 @@ jobs:
 
       - name: Install Python deps
         run: |
+          set -euo pipefail
           python -m pip install --upgrade pip
           pip install epitran pandas
 
-      - name: Transcribe English to IPA with Epitran (eng-Latn)
+      - name: Smoke-test Epitran (eng-Latn) before full run
         run: |
+          set -euo pipefail
+          python - << 'PY'
+          import epitran
+          epi = epitran.Epitran("eng-Latn")
+          sample = "Peter Piper picked a peck of pickled peppers."
+          print("SMOKE:", epi.transliterate(sample))
+          PY
+
+      - name: Transcribe English to IPA with Epitran
+        run: |
+          set -euo pipefail
           python - << 'PY'
           import os, re, csv, sys, shutil
           import epitran
-
-          if not shutil.which("lex_lookup"):
-              print("ERROR: lex_lookup not found on PATH")
-              sys.exit(1)
 
           INP = "data/english.txt"
           OUT = "outputs/english.csv"
           os.makedirs("outputs", exist_ok=True)
 
+          # load
           raw = open(INP, encoding="utf-8").read()
           raw = re.sub(r"[ \t]+$", "", raw, flags=re.M)
 
-          # Prefer blank-line-separated blocks; fall back to line-per-twister
+          # prefer blank-line blocks; fallback to line-per-twister
           blocks = []
           for blk in re.split(r"(?:\r?\n){2,}", raw):
               lines = [ln.strip() for ln in blk.splitlines() if ln.strip()]
@@ -78,16 +97,17 @@ jobs:
               blocks = [ln.strip() for ln in raw.splitlines() if ln.strip()]
 
           if not blocks:
-              print("ERROR: No twisters found in data/english.txt")
+              print("ERROR: No twisters found in data/english.txt", file=sys.stderr)
               sys.exit(1)
 
           epi = epitran.Epitran("eng-Latn")
+
           rows = []
           for i, text in enumerate(blocks, 1):
               ipa = epi.transliterate(text)
               rows.append((text, ipa))
               if i <= 3:
-                  print(f"Sample {i}: {ipa}")
+                  print(f"SAMPLE {i}: {ipa}")
 
           with open(OUT, "w", encoding="utf-8", newline="") as g:
               w = csv.writer(g)
@@ -97,8 +117,14 @@ jobs:
           print(f"✅ Wrote {OUT} with {len(rows)} rows.")
           PY
 
-      - name: Show outputs
-        run: ls -lah outputs || true
+      - name: Show outputs (must include english.csv)
+        run: |
+          set -euo pipefail
+          ls -lah outputs
+          test -f outputs/english.csv || (echo "ERROR: outputs/english.csv not found after run" >&2; exit 1)
+          wc -l outputs/english.csv
+          echo "----- Head of CSV -----"
+          head -n 5 outputs/english.csv || true
 
       - name: Upload CSV as artifact
         uses: actions/upload-artifact@v4
@@ -106,13 +132,8 @@ jobs:
           name: english-ipa-epitran
           path: outputs/english.csv
 
-      # If you want it in the repo too, allow CSVs in .gitignore:
-      #   outputs/*
-      #   !outputs/eng-Latin.json
-      #   !outputs/*.csv
-      # then uncomment:
-      # - name: Commit outputs into repo
-      #   uses: EndBug/add-and-commit@v9
-      #   with:
-      #     add: "outputs/english.csv"
-      #     message: "Add English IPA CSV (Epitran)"
+      - name: Commit outputs into repo
+        uses: EndBug/add-and-commit@v9
+        with:
+          add: "outputs/english.csv"
+          message: "Add English IPA CSV (Epitran + Flite)"
