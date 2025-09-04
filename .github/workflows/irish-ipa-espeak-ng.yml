@@ -46,7 +46,8 @@ jobs:
           OUT = 'outputs/irish.csv'
           os.makedirs('outputs', exist_ok=True)
 
-          SEP = Separator(phone=' ', word=' | ')
+          # phone='' allows tie=True; word separator kept for readability
+          SEP = Separator(phone='', word=' | ')
 
           def clean_irish_ipa(ipa: str) -> str:
               ipa = ipa.replace('(ga)', '').replace('(en)', '')
@@ -61,15 +62,15 @@ jobs:
                       continue
                   ipa = phonemize(
                       text,
-                      language='ga',           # Irish (Gaeilge)
-                      backend='espeak',        # eSpeak-NG
+                      language='ga',
+                      backend='espeak',
                       separator=SEP,
                       strip=True,
                       njobs=1,
                       punctuation_marks=';:,.!?¡¿—…"«»“”()[]{}',
                       preserve_punctuation=True,
                       with_stress=True,
-                      tie=True,
+                      tie=True,                         # now valid
                       language_switch='remove-flags',
                       words_mismatch='warn'
                   )
