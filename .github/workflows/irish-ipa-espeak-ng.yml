@@ -1,48 +1,104 @@
-- name: Transcribe Irish to IPA with phonemizer (lang=ga, cleaned)
-  run: |
-    python - << 'PY'
-    import os, csv
-    from phonemizer import phonemize
-    from phonemizer.separator import Separator
+name: Irish IPA (phonemizer + eSpeak-NG, cleaned)
 
-    INP = 'data/irish.txt'
-    OUT = 'outputs/irish.csv'
-    os.makedirs('outputs', exist_ok=True)
+on:
+  workflow_dispatch: {}
 
-    SEP = Separator(phone=' ', word=' | ')
+permissions:
+  contents: write   # allows committing outputs/irish.csv
 
-    def clean_irish_ipa(ipa: str) -> str:
-        ipa = ipa.replace('(ga)', '').replace('(en)', '')
-        ipa = ipa.replace('dʒ', 'ɟ')   # optional Irish cleanup
-        return ' '.join(ipa.split())
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
 
-    rows = []
-    with open(INP, encoding='utf-8') as f:
-        for line in f:
-            text = line.strip()
-            if not text:
-                continue
-            ipa = phonemize(
-                text,
-                language='ga',
-                backend='espeak',
-                separator=SEP,
-                strip=True,
-                njobs=1,
-                punctuation_marks=';:,.!?¡¿—…"«»“”()[]{}',
-                preserve_punctuation=True,
-                with_stress=True,
-                tie=True,
-                language_switch='remove-flags',
-                words_mismatch='warn'
-            )
-            ipa = clean_irish_ipa(ipa)
-            rows.append((text, ipa))
+      - name: Install system deps (eSpeak-NG)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y espeak-ng
 
-    with open(OUT, 'w', encoding='utf-8', newline='') as g:
-        w = csv.writer(g)
-        w.writerow(['text','ipa'])
-        w.writerows(rows)
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
 
-    print(f"Wrote {OUT} with {len(rows)} rows.")
-    PY
+      - name: Install Python deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install phonemizer pandas
+
+      - name: Verify input exists
+        run: |
+          set -euo pipefail
+          test -f data/irish.txt || (echo "ERROR: data/irish.txt not found" >&2; exit 1)
+          test -s data/irish.txt || (echo "ERROR: data/irish.txt is empty" >&2; exit 1)
+          head -n 5 data/irish.txt || true
+
+      - name: Transcribe Irish to IPA with phonemizer (lang=ga, cleaned)
+        run: |
+          python - << 'PY'
+          import os, csv
+          from phonemizer import phonemize
+          from phonemizer.separator import Separator
+
+          INP = 'data/irish.txt'
+          OUT = 'outputs/irish.csv'
+          os.makedirs('outputs', exist_ok=True)
+
+          SEP = Separator(phone=' ', word=' | ')
+
+          def clean_irish_ipa(ipa: str) -> str:
+              ipa = ipa.replace('(ga)', '').replace('(en)', '')
+              ipa = ipa.replace('dʒ', 'ɟ')   # optional tweak
+              return ' '.join(ipa.split())
+
+          rows = []
+          with open(INP, encoding='utf-8') as f:
+              for line in f:
+                  text = line.strip()
+                  if not text:
+                      continue
+                  ipa = phonemize(
+                      text,
+                      language='ga',           # Irish (Gaeilge)
+                      backend='espeak',        # eSpeak-NG
+                      separator=SEP,
+                      strip=True,
+                      njobs=1,
+                      punctuation_marks=';:,.!?¡¿—…"«»“”()[]{}',
+                      preserve_punctuation=True,
+                      with_stress=True,
+                      tie=True,
+                      language_switch='remove-flags',
+                      words_mismatch='warn'
+                  )
+                  ipa = clean_irish_ipa(ipa)
+                  rows.append((text, ipa))
+
+          with open(OUT, 'w', encoding='utf-8', newline='') as g:
+              w = csv.writer(g)
+              w.writerow(['text','ipa'])
+              w.writerows(rows)
+
+          print(f"✅ Wrote {OUT} with {len(rows)} rows.")
+          PY
+
+      - name: Show outputs
+        run: |
+          set -euo pipefail
+          ls -lah outputs
+          test -f outputs/irish.csv || (echo "ERROR: outputs/irish.csv not found after run" >&2; exit 1)
+          head -n 5 outputs/irish.csv || true
+
+      - name: Upload CSV as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: irish-ipa
+          path: outputs/irish.csv
+
+      - name: Commit outputs into repo
+        uses: EndBug/add-and-commit@v9
+        with:
+          add: "outputs/irish.csv"
+          message: "Add Irish IPA CSV (phonemizer + eSpeak-NG, cleaned)"
