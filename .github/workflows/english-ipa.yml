@@ -1,10 +1,10 @@
 name: English IPA (phonemizer + eSpeak-NG)
 
 on:
-  workflow_dispatch: {}   # run manually from the Actions tab
+  workflow_dispatch: {}
 
 permissions:
-  contents: read          # we only upload artifact to avoid .gitignore issues
+  contents: write
 
 jobs:
   build:
@@ -13,7 +13,12 @@ jobs:
       - name: Check out repo
         uses: actions/checkout@v4
 
-      - name: Install system deps (eSpeak-NG)
+      - name: Verify input exists
+        run: |
+          test -f data/english.txt || (echo "ERROR: data/english.txt not found" && exit 1)
+          echo "Found data/english.txt"
+
+      - name: Install eSpeak-NG
         run: |
           sudo apt-get update
           sudo apt-get install -y espeak-ng
@@ -28,48 +33,39 @@ jobs:
           python -m pip install --upgrade pip
           pip install phonemizer pandas
 
-      - name: Transcribe English blocks to IPA (en-US)
+      - name: Transcribe English to IPA
         run: |
           python - << 'PY'
-          import os, csv, re
+          import os, csv, re, sys
           from phonemizer import phonemize
 
           INP = 'data/english.txt'
           OUT = 'outputs/english.csv'
           os.makedirs('outputs', exist_ok=True)
 
-          # --- Helper: split the file into blocks separated by 1+ blank lines,
-          # join lines inside each block, and lightly filter obvious metadata blocks.
-          def load_blocks(path):
-              with open(path, encoding='utf-8') as f:
-                  text = f.read()
-              # Normalize line-endings and strip trailing spaces
-              text = re.sub(r'[ \t]+$', '', text, flags=re.M)
-              # Split on 1+ blank lines
-              raw_blocks = re.split(r'(?:\r?\n){2,}', text)
-              blocks = []
-              for b in raw_blocks:
-                  lines = [ln.strip() for ln in b.splitlines() if ln.strip()]
-                  if not lines:
-                      continue
-                  joined = ' '.join(lines)
-                  # Skip blocks that are probably labels/IDs
-                  if re.fullmatch(r'\d+|\d+\s+\d+|English\s*\d+', joined, flags=re.I):
-                      continue
-                  # Skip very short “labels”
-                  if len(joined.split()) <= 2 and joined.isalpha():
-                      continue
-                  blocks.append(joined)
-              return blocks
+          # Load as blocks separated by blank lines; join lines inside blocks
+          with open(INP, encoding='utf-8') as f:
+              text = f.read()
+          text = re.sub(r'[ \t]+$', '', text, flags=re.M)
+          raw_blocks = re.split(r'(?:\r?\n){2,}', text)
+          blocks = []
+          for b in raw_blocks:
+              lines = [ln.strip() for ln in b.splitlines() if ln.strip()]
+              if not lines: 
+                  continue
+              blocks.append(' '.join(lines))
 
-          blocks = load_blocks(INP)
+          print(f"INFO: Found {len(blocks)} blocks (twisters) to transcribe.")
+          if not blocks:
+              print("ERROR: No blocks found in data/english.txt")
+              sys.exit(1)
 
           rows = []
-          for text in blocks:
+          for i, text in enumerate(blocks, 1):
               ipa = phonemize(
                   text,
-                  language='en-us',     # change to 'en-gb' for British English
-                  backend='espeak',     # eSpeak-NG
+                  language='en-us',   # change to 'en-gb' for British
+                  backend='espeak',
                   strip=True,
                   njobs=1,
                   punctuation_marks=';:,.!?¡¿—…"«»“”()[]{}',
@@ -83,11 +79,21 @@ jobs:
               w.writerow(['text','ipa'])
               w.writerows(rows)
 
-          print(f"Wrote {OUT} with {len(rows)} rows.")
+          print(f"INFO: Wrote {OUT} with {len(rows)} rows.")
           PY
+
+      - name: Show outputs folder
+        run: ls -lah outputs || true
 
       - name: Upload CSV as artifact
         uses: actions/upload-artifact@v4
         with:
           name: english-ipa
           path: outputs/english.csv
+
+      # Uncomment these lines if you changed .gitignore to allow CSVs:
+      # - name: Commit outputs into repo
+      #   uses: EndBug/add-and-commit@v9
+      #   with:
+      #     add: "outputs/english.csv"
+      #     message: "Add English IPA CSV"
