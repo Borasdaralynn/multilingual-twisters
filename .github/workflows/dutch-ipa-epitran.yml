@@ -1,10 +1,10 @@
-name: Dutch IPA (Epitran only, hardened)
+name: Dutch IPA (Epitran only — hardened to produce CSV)
 
 on:
   workflow_dispatch: {}
 
 permissions:
-  contents: write   # needed to commit outputs/dutch.csv
+  contents: write   # commit outputs/dutch.csv
 
 jobs:
   build:
@@ -17,7 +17,7 @@ jobs:
         run: |
           set -euo pipefail
           if [ ! -f data/dutch.txt ]; then
-            echo "ERROR: data/dutch.txt not found (wrong path or filename case?)." >&2
+            echo "ERROR: data/dutch.txt not found (path/name mismatch?)" >&2
             exit 1
           fi
           if [ ! -s data/dutch.txt ]; then
@@ -34,19 +34,32 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install Python deps
+      - name: Install Python deps (pin Epitran)
         run: |
           set -euo pipefail
           python -m pip install --upgrade pip
-          pip install epitran pandas
+          # Pin a recent, stable Epitran (adjust if your project requires a specific pin)
+          pip install "epitran>=1.24,<2" pandas
+          python - << 'PY'
+          import sys, epitran, pkgutil, importlib, importlib.util
+          print("Epitran version OK")
+          print("Epitran module file:", epitran.__file__)
+          # Quick import of panphon just to ensure data deps are present
+          import panphon
+          print("Panphon OK")
+          PY
 
-      - name: Smoke-test Epitran (nld-Latn)
+      - name: Smoke-test Epitran (must load nld-Latn and produce IPA)
         run: |
           set -euo pipefail
           python - << 'PY'
           import epitran
           epi = epitran.Epitran("nld-Latn")
-          print("SMOKE:", epi.transliterate("Zeven zotte zuigers zoogen zonder zucht."))
+          sample = "Zeven zotte zuigers zoogen zonder zucht."
+          ipa = epi.transliterate(sample)
+          print("SMOKE:", ipa)
+          if not ipa or ipa.strip()==sample:
+              raise SystemExit("ERROR: Smoke test produced empty or unchanged output.")
           PY
 
       - name: Transcribe Dutch to IPA (Epitran nld-Latn)
@@ -61,6 +74,7 @@ jobs:
           os.makedirs("outputs", exist_ok=True)
 
           raw = open(INP, encoding="utf-8").read()
+          # Normalize trailing spaces
           raw = re.sub(r"[ \t]+$", "", raw, flags=re.M)
 
           # Parse: prefer blank-line blocks; fallback to one-line-per-twister
@@ -80,20 +94,17 @@ jobs:
 
           epi = epitran.Epitran("nld-Latn")
 
-          rows = []
-          for i, text in enumerate(blocks, 1):
-              ipa = epi.transliterate(text)
-              rows.append((text, ipa))
-              if i <= 3:
-                  print(f"SAMPLE {i}: {ipa}")
-
+          # Write CSV with header first; append rows (more robust on interrupts)
           with open(OUT, "w", encoding="utf-8", newline="") as g:
               w = csv.writer(g)
               w.writerow(["text", "ipa"])
-              w.writerows(rows)
+              for i, text in enumerate(blocks, 1):
+                  ipa = epi.transliterate(text)
+                  w.writerow([text, ipa])
+                  if i <= 3:
+                      print(f"SAMPLE {i}: {ipa}")
 
           # Hard verify file exists and has at least header+1 row
-          import os
           if not os.path.exists(OUT):
               print("ERROR: outputs/dutch.csv was not created.", file=sys.stderr)
               sys.exit(1)
@@ -101,7 +112,7 @@ jobs:
               print("ERROR: outputs/dutch.csv is empty (no rows).", file=sys.stderr)
               sys.exit(1)
 
-          print(f"✅ Wrote {OUT} with {len(rows)} rows.")
+          print(f"✅ Wrote {OUT} with {n} rows.")
           PY
 
       - name: Show outputs (must include dutch.csv)
