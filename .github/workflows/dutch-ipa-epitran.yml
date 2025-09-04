@@ -1,4 +1,4 @@
-name: Dutch IPA (Epitran only — hardened to produce CSV)
+name: Dutch IPA (Epitran)
 
 on:
   workflow_dispatch: {}
