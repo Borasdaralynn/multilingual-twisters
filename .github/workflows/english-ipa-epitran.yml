@@ -1,0 +1,86 @@
+name: English IPA (Epitran)
+
+on:
+  workflow_dispatch: {}   # run manually from Actions
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Verify input exists (data/english.txt)
+        run: |
+          if [ ! -f data/english.txt ]; then
+            echo "ERROR: data/english.txt not found." >&2
+            exit 1
+          fi
+          echo "✅ Found data/english.txt"
+          head -n 10 data/english.txt
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install epitran pandas
+
+      - name: Transcribe with Epitran (eng-Latn)
+        run: |
+          python - << 'PY'
+          import os, re, csv, sys
+          import epitran
+
+          INP = "data/english.txt"
+          OUT = "outputs/english.csv"
+          os.makedirs("outputs", exist_ok=True)
+
+          with open(INP, encoding="utf-8") as f:
+              raw = f.read()
+
+          raw = re.sub(r"[ \t]+$", "", raw, flags=re.M)
+          blocks = []
+          for blk in re.split(r"(?:\r?\n){2,}", raw):
+              lines = [ln.strip() for ln in blk.splitlines() if ln.strip()]
+              if lines:
+                  blocks.append(" ".join(lines))
+
+          if len(blocks) <= 1:  # fallback to one-line-per-twister
+              blocks = [ln.strip() for ln in raw.splitlines() if ln.strip()]
+
+          if not blocks:
+              print("ERROR: No twisters found.")
+              sys.exit(1)
+
+          epi = epitran.Epitran("eng-Latn")
+
+          rows = []
+          for i, text in enumerate(blocks, 1):
+              ipa = epi.transliterate(text)
+              rows.append((text, ipa))
+              if i <= 3:
+                  print(f"Sample {i}: {ipa}")
+
+          with open(OUT, "w", encoding="utf-8", newline="") as g:
+              w = csv.writer(g)
+              w.writerow(["text","ipa"])
+              w.writerows(rows)
+
+          print(f"✅ Wrote {OUT} with {len(rows)} rows.")
+          PY
+
+      - name: Show outputs folder
+        run: ls -lah outputs
+
+      - name: Upload CSV as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: english-ipa-epitran
+          path: outputs/english.csv
