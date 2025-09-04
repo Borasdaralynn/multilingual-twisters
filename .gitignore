@@ -1,7 +1,6 @@
-venv/
-__pycache__/
-*.log
 outputs/*
 !outputs/eng-Latin.json
+!outputs/*.csv
+
 
 
