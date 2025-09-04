@@ -1,0 +1,93 @@
+name: English IPA (phonemizer + eSpeak-NG)
+
+on:
+  workflow_dispatch: {}   # run manually from the Actions tab
+
+permissions:
+  contents: read          # we only upload artifact to avoid .gitignore issues
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Install system deps (eSpeak-NG)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y espeak-ng
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install phonemizer pandas
+
+      - name: Transcribe English blocks to IPA (en-US)
+        run: |
+          python - << 'PY'
+          import os, csv, re
+          from phonemizer import phonemize
+
+          INP = 'data/english.txt'
+          OUT = 'outputs/english.csv'
+          os.makedirs('outputs', exist_ok=True)
+
+          # --- Helper: split the file into blocks separated by 1+ blank lines,
+          # join lines inside each block, and lightly filter obvious metadata blocks.
+          def load_blocks(path):
+              with open(path, encoding='utf-8') as f:
+                  text = f.read()
+              # Normalize line-endings and strip trailing spaces
+              text = re.sub(r'[ \t]+$', '', text, flags=re.M)
+              # Split on 1+ blank lines
+              raw_blocks = re.split(r'(?:\r?\n){2,}', text)
+              blocks = []
+              for b in raw_blocks:
+                  lines = [ln.strip() for ln in b.splitlines() if ln.strip()]
+                  if not lines:
+                      continue
+                  joined = ' '.join(lines)
+                  # Skip blocks that are probably labels/IDs
+                  if re.fullmatch(r'\d+|\d+\s+\d+|English\s*\d+', joined, flags=re.I):
+                      continue
+                  # Skip very short “labels”
+                  if len(joined.split()) <= 2 and joined.isalpha():
+                      continue
+                  blocks.append(joined)
+              return blocks
+
+          blocks = load_blocks(INP)
+
+          rows = []
+          for text in blocks:
+              ipa = phonemize(
+                  text,
+                  language='en-us',     # change to 'en-gb' for British English
+                  backend='espeak',     # eSpeak-NG
+                  strip=True,
+                  njobs=1,
+                  punctuation_marks=';:,.!?¡¿—…"«»“”()[]{}',
+                  preserve_punctuation=True,
+                  with_stress=True
+              )
+              rows.append((text, ipa))
+
+          with open(OUT, 'w', encoding='utf-8', newline='') as g:
+              w = csv.writer(g)
+              w.writerow(['text','ipa'])
+              w.writerows(rows)
+
+          print(f"Wrote {OUT} with {len(rows)} rows.")
+          PY
+
+      - name: Upload CSV as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: english-ipa
+          path: outputs/english.csv
