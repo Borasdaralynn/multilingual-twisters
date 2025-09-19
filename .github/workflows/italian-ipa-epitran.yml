@@ -133,4 +133,5 @@ jobs:
         uses: EndBug/add-and-commit@v9
         with:
           add: "outputs/italian.csv"
-          message: "Add Spanish IPA CSV (Epitran spa-Latn)"
+          message: "Add Italian IPA CSV (Epitran ita-Latn)"
+          pull: '--rebase'
