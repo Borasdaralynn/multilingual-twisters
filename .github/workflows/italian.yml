@@ -1,0 +1,129 @@
+name: Italian IPA (Epitran)
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write  # required to commit outputs/italian.csv
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Verify input exists and preview
+        run: |
+          set -euo pipefail
+          if [ ! -f data/italian.txt ]; then
+            echo "ERROR: data/italian.txt not found." >&2
+            exit 1
+          fi
+          if [ ! -s data/italian.txt ]; then
+            echo "ERROR: data/italian.txt is empty." >&2
+            exit 1
+          fi
+          echo "✅ Found data/italian.txt"
+          echo "----- First 12 lines -----"
+          head -n 12 data/italian.txt || true
+          echo "--------------------------"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          pip install "epitran>=1.24,<2" pandas
+          python - << 'PY'
+          import epitran
+          import panphon
+          print("✅ Epitran and Panphon installed correctly.")
+          print("Epitran module path:", epitran.__file__)
+          PY
+
+      - name: Smoke-test Epitran (ita-Latn)
+        run: |
+          set -euo pipefail
+          python - << 'PY'
+          import epitran
+          epi = epitran.Epitran("ita-Latn")
+          sample = "Il gatto guarda il topo."
+          ipa = epi.transliterate(sample)
+          print("SMOKE:", ipa)
+          if not ipa or ipa.strip() == sample:
+              raise SystemExit("ERROR: Smoke test failed. Output is empty or unchanged.")
+          PY
+
+      - name: Transcribe Italian to IPA
+        run: |
+          set -euo pipefail
+          python - << 'PY'
+          import os, re, csv, sys
+          import epitran
+
+          INP = "data/italian.txt"
+          OUT = "outputs/italian.csv"
+          os.makedirs("outputs", exist_ok=True)
+
+          raw = open(INP, encoding="utf-8").read()
+          raw = re.sub(r"[ \t]+$", "", raw, flags=re.M)
+
+          blocks = []
+          for blk in re.split(r"(?:\r?\n){2,}", raw):
+              lines = [ln.strip() for ln in blk.splitlines() if ln.strip()]
+              if lines:
+                  blocks.append(" ".join(lines))
+          if len(blocks) <= 1:
+              blocks = [ln.strip() for ln in raw.splitlines() if ln.strip()]
+
+          if not blocks:
+              print("ERROR: No twisters found in data/italian.txt", file=sys.stderr)
+              sys.exit(1)
+
+          epi = epitran.Epitran("ita-Latn")
+
+          with open(OUT, "w", encoding="utf-8", newline="") as g:
+              w = csv.writer(g)
+              w.writerow(["text", "ipa"])
+              for i, text in enumerate(blocks, 1):
+                  ipa = epi.transliterate(text)
+                  w.writerow([text, ipa])
+                  if i <= 3:
+                      print(f"SAMPLE {i}: {ipa}")
+
+          if not os.path.exists(OUT):
+              print("ERROR: outputs/italian.csv was not created.", file=sys.stderr)
+              sys.exit(1)
+          if sum(1 for _ in open(OUT, encoding="utf-8")) < 2:
+              print("ERROR: outputs/italian.csv is empty.", file=sys.stderr)
+              sys.exit(1)
+
+          print(f"✅ Wrote {OUT} with {len(blocks)} rows.")
+          PY
+
+      - name: Show outputs (must include italian.csv)
+        run: |
+          set -euo pipefail
+          ls -lah outputs
+          test -f outputs/italian.csv || (echo "ERROR: outputs/italian.csv not found after run" >&2; exit 1)
+          wc -l outputs/italian.csv
+          echo "----- CSV head -----"
+          head -n 5 outputs/italian.csv || true
+
+      - name: Upload CSV as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: italian-ipa-epitran
+          path: outputs/italian.csv
+
+      - name: Commit outputs into repo
+        uses: EndBug/add-and-commit@v9
+        with:
+          add: "outputs/italian.csv"
+          message: "Add Italian IPA CSV (Epitran ita-Latn)"
+          pull: false  # Avoid rebase issues
