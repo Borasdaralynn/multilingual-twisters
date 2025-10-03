@@ -129,9 +129,27 @@ jobs:
           name: italian-ipa-epitran
           path: outputs/italian.csv
 
-      - name: Commit outputs into repo
-        uses: EndBug/add-and-commit@v9
+           - name: Show outputs (must include italian.csv)
+        run: |
+          set -euo pipefail
+          ls -lah outputs
+          test -f outputs/italian.csv || (echo "ERROR: outputs/italian.csv not found after run" >&2; exit 1)
+          echo "----- CSV head -----"
+          head -n 5 outputs/italian.csv || true
+
+      - name: Upload CSV as artifact
+        uses: actions/upload-artifact@v4
         with:
-          add: "outputs/italian.csv"
-          message: "Add Italian IPA CSV (Epitran ita-Latn)"
-          pull: '--rebase'
+          name: italian-ipa-epitran
+          path: outputs/italian.csv
+
+      - name: Commit outputs into repo
+        run: |
+          set -euo pipefail
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git pull --rebase origin "$GITHUB_REF_NAME" || true
+          git add outputs/italian.csv
+          git commit -m "Add Italian IPA CSV (Epitran ita-Latn)" || echo "No changes to commit"
+          git push origin HEAD:"$GITHUB_REF_NAME"
+
