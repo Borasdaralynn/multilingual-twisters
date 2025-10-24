@@ -1,0 +1,136 @@
+name: Tagalog IPA (Epitran)
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write   # commit outputs/tagalog.csv
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Verify input exists and preview
+        run: |
+          set -euo pipefail
+          if [ ! -f data/tagalog.txt ]; then
+            echo "ERROR: data/tagalog.txt not found (path/name mismatch?)" >&2
+            exit 1
+          fi
+          if [ ! -s data/tagalog.txt ]; then
+            echo "ERROR: data/tagalog.txt exists but is EMPTY." >&2
+            exit 1
+          fi
+          echo "✅ Found data/tagalog.txt (size: $(wc -c < data/tagalog.txt) bytes)"
+          echo "----- First 12 lines -----"
+          head -n 12 data/tagalog.txt || true
+          echo "--------------------------"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python deps (pin Epitran)
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          # Pin a recent, stable Epitran (adjust if your project requires a specific pin)
+          pip install "epitran>=1.24,<2" pandas
+          python - << 'PY'
+          import sys, epitran, pkgutil, importlib, importlib.util
+          print("Epitran version OK")
+          print("Epitran module file:", epitran.__file__)
+          # Quick import of panphon just to ensure data deps are present
+          import panphon
+          print("Panphon OK")
+          PY
+
+      - name: Smoke-test Epitran (must load tgl-Latn and produce IPA)
+        run: |
+          set -euo pipefail
+          python - << 'PY'
+          import epitran
+          epi = epitran.Epitran("tgl-Latn")
+          sample = "Le chat chasse les souris."
+          ipa = epi.transliterate(sample)
+          print("SMOKE:", ipa)
+          if not ipa or ipa.strip()==sample:
+              raise SystemExit("ERROR: Smoke test produced empty or unchanged output.")
+          PY
+
+      - name: Transcribe Tagalog to IPA (Epitran tgl-Latn)
+        run: |
+          set -euo pipefail
+          python - << 'PY'
+          import os, re, csv, sys
+          import epitran
+
+          INP = "data/tagalog.txt"
+          OUT = "outputs/tagalog.csv"
+          os.makedirs("outputs", exist_ok=True)
+
+          raw = open(INP, encoding="utf-8").read()
+          # Normalize trailing spaces
+          raw = re.sub(r"[ \t]+$", "", raw, flags=re.M)
+
+          # Parse: prefer blank-line blocks; fallback to one-line-per-twister
+          blocks = []
+          for blk in re.split(r"(?:\r?\n){2,}", raw):
+              lines = [ln.strip() for ln in blk.splitlines() if ln.strip()]
+              if lines:
+                  blocks.append(" ".join(lines))
+          if len(blocks) <= 1:
+              blocks = [ln.strip() for ln in raw.splitlines() if ln.strip()]
+
+          n = len(blocks)
+          print(f"INFO: Parsed {n} twister blocks.")
+          if n == 0:
+              print("ERROR: No twisters parsed. Use either blank lines between twisters, or one twister per line.", file=sys.stderr)
+              sys.exit(1)
+
+          epi = epitran.Epitran("tgl-Latn")
+
+          # Write CSV with header first; append rows (more robust on interrupts)
+          with open(OUT, "w", encoding="utf-8", newline="") as g:
+              w = csv.writer(g)
+              w.writerow(["text", "ipa"])
+              for i, text in enumerate(blocks, 1):
+                  ipa = epi.transliterate(text)
+                  w.writerow([text, ipa])
+                  if i <= 3:
+                      print(f"SAMPLE {i}: {ipa}")
+
+          # Hard verify file exists and has at least header+1 row
+          if not os.path.exists(OUT):
+              print("ERROR: outputs/tagalog.csv was not created.", file=sys.stderr)
+              sys.exit(1)
+          if sum(1 for _ in open(OUT, encoding="utf-8")) < 2:
+              print("ERROR: outputs/tagalog.csv is empty (no rows).", file=sys.stderr)
+              sys.exit(1)
+
+          print(f"✅ Wrote {OUT} with {n} rows.")
+          PY
+
+      - name: Show outputs (must include tagalog.csv)
+        run: |
+          set -euo pipefail
+          ls -lah outputs
+          test -f outputs/tagalog.csv || (echo "ERROR: outputs/tagalog.csv not found after run" >&2; exit 1)
+          echo "----- CSV head -----"
+          head -n 5 outputs/tagalog.csv || true
+
+      - name: Upload CSV as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tagalog-ipa-epitran
+          path: outputs/tagalog.csv
+
+      - name: Commit outputs into repo
+        uses: EndBug/add-and-commit@v9
+        with:
+          add: "outputs/french.csv"
+          message: "Add French IPA CSV (Epitran tgl-Latn)"
