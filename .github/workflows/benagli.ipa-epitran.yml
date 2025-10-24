@@ -55,7 +55,7 @@ jobs:
           python - << 'PY'
           import epitran
           epi = epitran.Epitran("ben-Beng")
-          sample = "Le chat chasse les souris."
+          sample = "bidalti induratice tada karche."
           ipa = epi.transliterate(sample)
           print("SMOKE:", ipa)
           if not ipa or ipa.strip()==sample:
